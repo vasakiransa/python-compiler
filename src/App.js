@@ -1,5 +1,5 @@
-// Full Python IDE with default file, multiple file upload, save, and download functionality
-import React, { useState, useRef } from "react";
+// Full Python IDE with default file, multiple file upload, save, download, and localStorage persistence
+import React, { useState, useRef, useEffect } from "react";
 import { PythonProvider, usePython } from "react-py";
 import Editor from "@monaco-editor/react";
 
@@ -12,15 +12,43 @@ export default function App() {
 }
 
 function PythonIDE() {
-  const [files, setFiles] = useState({ "main.py": "" });
-  const [selectedFile, setSelectedFile] = useState("main.py");
+  const [files, setFiles] = useState({});
+  const [selectedFile, setSelectedFile] = useState(null);
   const [code, setCode] = useState("");
   const fileInputRef = useRef(null);
   const { runPython, stdout, stderr, isRunning } = usePython();
 
+  useEffect(() => {
+    const saved = localStorage.getItem('python-ide-files');
+    if (saved) {
+      try {
+        const loadedFiles = JSON.parse(saved);
+        setFiles(loadedFiles);
+        const firstFile = Object.keys(loadedFiles)[0] || "main.py";
+        setSelectedFile(firstFile);
+        setCode(loadedFiles[firstFile] || "");
+      } catch (e) {
+        console.error("Failed to load files from localStorage:", e);
+        setFiles({ "main.py": "" });
+        setSelectedFile("main.py");
+        setCode("");
+      }
+    } else {
+      setFiles({ "main.py": "" });
+      setSelectedFile("main.py");
+      setCode("");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (Object.keys(files).length > 0) {
+      localStorage.setItem('python-ide-files', JSON.stringify(files));
+    }
+  }, [files]);
+
   const handleFileUpload = async (e) => {
     const items = e.target.files;
-    const newFiles = {};
+    const newFiles = { ...files };
 
     for (let i = 0; i < items.length; i++) {
       const file = items[i];
@@ -30,12 +58,21 @@ function PythonIDE() {
       }
     }
 
-    setFiles((prev) => ({ ...prev, ...newFiles }));
+    setFiles(newFiles);
+
+    // If no file is selected, select the first new file
+    if (!selectedFile) {
+      const firstNewFile = Object.keys(newFiles).find(key => !files[key]);
+      if (firstNewFile) {
+        setSelectedFile(firstNewFile);
+        setCode(newFiles[firstNewFile]);
+      }
+    }
   };
 
   const handleFileClick = (fileName) => {
     setSelectedFile(fileName);
-    setCode(files[fileName]);
+    setCode(files[fileName] || "");
   };
 
   const handleSave = () => {
@@ -43,12 +80,13 @@ function PythonIDE() {
     const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = selectedFile.split("/").pop();
+    a.download = selectedFile;
     a.click();
   };
 
   const handleSaveAll = () => {
-    const zip = require("jszip")();
+    const JSZip = require("jszip");
+    const zip = new JSZip();
     Object.entries(files).forEach(([path, content]) => {
       zip.file(path, content);
     });
@@ -97,7 +135,7 @@ function PythonIDE() {
                   backgroundColor: selectedFile === fileName ? "#0f62fe22" : "transparent",
                 }}
               >
-                {fileName.split("/").pop()}
+                {fileName}
               </li>
             ))}
           </ul>
@@ -112,7 +150,7 @@ function PythonIDE() {
             onChange={(value) => {
               setCode(value || "");
               if (selectedFile) {
-                setFiles((prev) => ({ ...prev, [selectedFile]: value }));
+                setFiles((prev) => ({ ...prev, [selectedFile]: value || "" }));
               }
             }}
             options={{
