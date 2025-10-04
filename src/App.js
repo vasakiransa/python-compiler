@@ -1,5 +1,5 @@
-// Full Python IDE with default file, multiple file upload, create new file, save, download, and localStorage persistence
-import React, { useState, useRef, useEffect } from "react";
+// Full Python IDE with default file, create new file, save, download, and localStorage persistence
+import React, { useState, useEffect } from "react";
 import { PythonProvider, usePython } from "react-py";
 import Editor from "@monaco-editor/react";
 
@@ -15,7 +15,6 @@ function PythonIDE() {
   const [files, setFiles] = useState({});
   const [selectedFile, setSelectedFile] = useState(null);
   const [code, setCode] = useState("");
-  const fileInputRef = useRef(null);
   const { runPython, stdout, stderr, isRunning } = usePython();
 
   useEffect(() => {
@@ -69,30 +68,6 @@ function PythonIDE() {
     setCode("");
   };
 
-  const handleFileUpload = async (e) => {
-    const items = e.target.files;
-    const newFiles = { ...files };
-
-    for (let i = 0; i < items.length; i++) {
-      const file = items[i];
-      if (file.name.endsWith(".py")) {
-        const content = await file.text();
-        newFiles[file.name] = content;
-      }
-    }
-
-    setFiles(newFiles);
-
-    // If no file is selected, select the first new file
-    if (!selectedFile) {
-      const firstNewFile = Object.keys(newFiles).find(key => !files[key]);
-      if (firstNewFile) {
-        setSelectedFile(firstNewFile);
-        setCode(newFiles[firstNewFile]);
-      }
-    }
-  };
-
   const handleFileClick = (fileName) => {
     setSelectedFile(fileName);
     setCode(files[fileName] || "");
@@ -131,15 +106,6 @@ function PythonIDE() {
         <h1 style={styles.title}>Python IDE</h1>
         <div>
           <button style={styles.button} onClick={handleCreateNewFile}>➕ New File</button>
-          <button style={styles.button} onClick={() => fileInputRef.current.click()}>📁 Add Files</button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            multiple
-            accept=".py"
-            onChange={handleFileUpload}
-            style={{ display: "none" }}
-          />
           <button style={styles.button} onClick={handleSave}>💾 Download File</button>
           <button style={styles.button} onClick={handleSaveAll}>💾 Download All</button>
           <button style={styles.button} onClick={handleRun} disabled={isRunning}>{isRunning ? "Running..." : "▶ Run"}</button>
