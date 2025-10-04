@@ -1,4 +1,4 @@
-// Full Python IDE with folder upload, save, and download functionality
+// Full Python IDE with default file, multiple file upload, save, and download functionality
 import React, { useState, useRef } from "react";
 import { PythonProvider, usePython } from "react-py";
 import Editor from "@monaco-editor/react";
@@ -12,13 +12,13 @@ export default function App() {
 }
 
 function PythonIDE() {
-  const [files, setFiles] = useState({});
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [files, setFiles] = useState({ "main.py": "" });
+  const [selectedFile, setSelectedFile] = useState("main.py");
   const [code, setCode] = useState("");
   const fileInputRef = useRef(null);
   const { runPython, stdout, stderr, isRunning } = usePython();
 
-  const handleFolderUpload = async (e) => {
+  const handleFileUpload = async (e) => {
     const items = e.target.files;
     const newFiles = {};
 
@@ -26,14 +26,11 @@ function PythonIDE() {
       const file = items[i];
       if (file.name.endsWith(".py")) {
         const content = await file.text();
-        newFiles[file.webkitRelativePath] = content;
+        newFiles[file.name] = content;
       }
     }
 
-    setFiles(newFiles);
-    const firstFile = Object.keys(newFiles)[0];
-    setSelectedFile(firstFile);
-    setCode(newFiles[firstFile]);
+    setFiles((prev) => ({ ...prev, ...newFiles }));
   };
 
   const handleFileClick = (fileName) => {
@@ -72,18 +69,17 @@ function PythonIDE() {
       <header style={styles.header}>
         <h1 style={styles.title}>Python IDE</h1>
         <div>
-          <button style={styles.button} onClick={() => fileInputRef.current.click()}>Upload Folder</button>
+          <button style={styles.button} onClick={() => fileInputRef.current.click()}>Add Files</button>
           <input
             type="file"
             ref={fileInputRef}
-            webkitdirectory="true"
-            directory="true"
             multiple
-            onChange={handleFolderUpload}
+            accept=".py"
+            onChange={handleFileUpload}
             style={{ display: "none" }}
           />
           <button style={styles.button} onClick={handleSave}>💾 Download File</button>
-          <button style={styles.button} onClick={handleSaveAll}>💾 Download  All</button>
+          <button style={styles.button} onClick={handleSaveAll}>💾 Download All</button>
           <button style={styles.button} onClick={handleRun} disabled={isRunning}>{isRunning ? "Running..." : "▶ Run"}</button>
         </div>
       </header>
