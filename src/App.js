@@ -1,4 +1,4 @@
-// Full Python IDE with default file, multiple file upload, save, download, and localStorage persistence
+// Full Python IDE with default file, multiple file upload, create new file, save, download, and localStorage persistence
 import React, { useState, useRef, useEffect } from "react";
 import { PythonProvider, usePython } from "react-py";
 import Editor from "@monaco-editor/react";
@@ -45,6 +45,29 @@ function PythonIDE() {
       localStorage.setItem('python-ide-files', JSON.stringify(files));
     }
   }, [files]);
+
+  const handleCreateNewFile = () => {
+    let newFileName = prompt("Enter file name (e.g., script.py):", "new.py");
+    if (!newFileName) return;
+
+    if (!newFileName.endsWith(".py")) {
+      newFileName += ".py";
+    }
+
+    // Ensure unique name
+    let uniqueName = newFileName;
+    let counter = 1;
+    while (files[uniqueName]) {
+      const baseName = uniqueName.replace(/(\.\d+)?\.py$/, "");
+      uniqueName = `${baseName}(${counter}).py`;
+      counter++;
+    }
+
+    const newFiles = { ...files, [uniqueName]: "" };
+    setFiles(newFiles);
+    setSelectedFile(uniqueName);
+    setCode("");
+  };
 
   const handleFileUpload = async (e) => {
     const items = e.target.files;
@@ -107,7 +130,8 @@ function PythonIDE() {
       <header style={styles.header}>
         <h1 style={styles.title}>Python IDE</h1>
         <div>
-          <button style={styles.button} onClick={() => fileInputRef.current.click()}>Add Files</button>
+          <button style={styles.button} onClick={handleCreateNewFile}>➕ New File</button>
+          <button style={styles.button} onClick={() => fileInputRef.current.click()}>📁 Add Files</button>
           <input
             type="file"
             ref={fileInputRef}
