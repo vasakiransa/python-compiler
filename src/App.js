@@ -1,4 +1,3 @@
-// Full Python IDE with default file, create new file, save, download, and localStorage persistence
 import React, { useState, useEffect } from "react";
 import { PythonProvider, usePython } from "react-py";
 import Editor from "@monaco-editor/react";
@@ -15,10 +14,11 @@ function PythonIDE() {
   const [files, setFiles] = useState({});
   const [selectedFile, setSelectedFile] = useState(null);
   const [code, setCode] = useState("");
-  const { runPython, stdout, stderr, isRunning } = usePython();
+  const { runPython, stdout, stderr, isRunning, isLoading } = usePython();
 
+  // Load files from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem('python-ide-files');
+    const saved = localStorage.getItem("python-ide-files");
     if (saved) {
       try {
         const loadedFiles = JSON.parse(saved);
@@ -28,22 +28,29 @@ function PythonIDE() {
         setCode(loadedFiles[firstFile] || "");
       } catch (e) {
         console.error("Failed to load files from localStorage:", e);
-        setFiles({ "main.py": "" });
+        setFiles({ "main.py": "print('Hello, Python!')" });
         setSelectedFile("main.py");
-        setCode("");
+        setCode("print('Hello, Python!')");
       }
     } else {
-      setFiles({ "main.py": "" });
+      setFiles({ "main.py": "print('Hello, Python!')" });
       setSelectedFile("main.py");
-      setCode("");
+      setCode("print('Hello, Python!')");
     }
   }, []);
 
+  // Save files to localStorage when files change
   useEffect(() => {
     if (Object.keys(files).length > 0) {
-      localStorage.setItem('python-ide-files', JSON.stringify(files));
+      localStorage.setItem("python-ide-files", JSON.stringify(files));
     }
   }, [files]);
+
+  // Log Python runtime status and output for debugging
+  useEffect(() => {
+    console.log("Python runtime status:", { isLoading, isRunning });
+    console.log("Output:", { stdout, stderr });
+  }, [isLoading, isRunning, stdout, stderr]);
 
   const handleCreateNewFile = () => {
     let newFileName = prompt("Enter file name (e.g., script.py):", "new.py");
@@ -96,8 +103,25 @@ function PythonIDE() {
     });
   };
 
-  const handleRun = () => {
-    if (!isRunning) runPython(code);
+  const handleRun = async () => {
+    if (isRunning) {
+      console.log("Python is already running");
+      return;
+    }
+    if (isLoading) {
+      console.log("Python runtime is still loading");
+      return;
+    }
+    if (!code.trim()) {
+      console.log("No code to run");
+      return;
+    }
+    try {
+      console.log("Running code:", code);
+      await runPython(code);
+    } catch (error) {
+      console.error("Error running Python code:", error);
+    }
   };
 
   return (
@@ -105,10 +129,22 @@ function PythonIDE() {
       <header style={styles.header}>
         <h1 style={styles.title}>Python IDE</h1>
         <div>
-          <button style={styles.button} onClick={handleCreateNewFile}>➕ New File</button>
-          <button style={styles.button} onClick={handleSave}>💾 Download File</button>
-          <button style={styles.button} onClick={handleSaveAll}>💾 Download All</button>
-          <button style={styles.button} onClick={handleRun} disabled={isRunning}>{isRunning ? "Running..." : "▶ Run"}</button>
+          <button style={styles.button} onClick={handleCreateNewFile}>
+            ➕ New File
+          </button>
+          <button style={styles.button} onClick={handleSave}>
+            💾 Download File
+          </button>
+          <button style={styles.button} onClick={handleSaveAll}>
+            💾 Download All
+          </button>
+          <button
+            style={styles.button}
+            onClick={handleRun}
+            disabled={isRunning || isLoading}
+          >
+            {isLoading ? "Loading..." : isRunning ? "Running..." : "▶ Run"}
+          </button>
         </div>
       </header>
 
@@ -122,7 +158,8 @@ function PythonIDE() {
                 onClick={() => handleFileClick(fileName)}
                 style={{
                   ...styles.fileItem,
-                  backgroundColor: selectedFile === fileName ? "#0f62fe22" : "transparent",
+                  backgroundColor:
+                    selectedFile === fileName ? "#0f62fe22" : "transparent",
                 }}
               >
                 {fileName}
@@ -157,7 +194,9 @@ function PythonIDE() {
 
         <section style={styles.outputSection}>
           <h2 style={styles.outputHeader}>Output</h2>
-          <pre style={styles.outputBox}>{stdout || "No output yet..."}</pre>
+          <pre style={styles.outputBox}>
+            {stdout || (isLoading ? "Python runtime loading..." : "No output yet...")}
+          </pre>
           {stderr && (
             <>
               <h2 style={styles.errorHeader}>Error</h2>
